@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Study Quiz</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="confetti" class="confetti-container"></div>
+
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <h1 id="title">Study Quiz</h1>
+        <div class="sub" id="subtitle"></div>
+      </div>
+      <div class="controls">
+        <div class="theme-wrap">
+          <select id="themeSelect" class="theme-select" title="Choose theme"></select>
+          <span id="themeHint" class="theme-hint">🔒 More at L2</span>
+        </div>
+        <label class="pill">
+          <input type="checkbox" id="lenientToggle" />
+          <span>Lenient</span>
+        </label>
+        <button id="reloadBtn" class="btn ghost" title="Reload questions" aria-label="Reload questions">↻</button>
+      </div>
+    </header>
+
+    <!-- XP & Level Bar -->
+    <section class="xpSection">
+      <div class="xp-header">
+        <span id="levelText">Level 1: Beginner</span>
+        <span id="masteryText">Mastered: 0/0 ⭐</span>
+      </div>
+      <div class="xp-bar">
+        <div id="xpBarFill" class="xp-bar-fill"></div>
+      </div>
+      <div id="xpText" class="xp-text">0 XP</div>
+    </section>
+
+    <section class="modeBar">
+      <button class="btn mode-btn" id="modeStudy">📚 Study</button>
+      <button class="btn mode-btn" id="modePractice">🎯 Practice</button>
+      <button class="btn mode-btn" id="modeStreak">🔥 Streak</button>
+      <button class="btn mode-btn" id="modeBoss">👑 Boss</button>
+    </section>
+
+    <main class="card">
+      <div class="statusRow">
+        <div class="status" id="statusLeft" aria-live="polite">Score: 0</div>
+        <div class="status" id="statusMid" aria-live="polite">Streak: 0</div>
+        <div class="status" id="statusRight" aria-live="polite">Q: 0/0</div>
+      </div>
+
+      <div id="errorBox" class="error hidden"></div>
+      <div id="loadingIndicator" class="loading hidden">Loading questions...</div>
+
+      <!-- Study Mode Area -->
+      <div id="studyArea" class="studyArea hidden">
+        <div id="studyCard" class="study-card" tabindex="0" role="button" aria-label="Flashcard - press Enter or Space to flip"></div>
+        <div class="study-controls">
+          <button id="studyPrev" class="btn nav-btn">⬅️ Previous</button>
+          <span id="studyProgress">Card 1 of 10</span>
+          <button id="studyNext" class="btn nav-btn">Next ➡️</button>
+          <button id="studyDone" class="btn primary hidden">✅ Ready to Quiz!</button>
+        </div>
+      </div>
+
+      <!-- Quiz Area -->
+      <div id="questionBox" class="questionBox hidden">
+        <div class="prompt" id="prompt"></div>
+        <div id="answerArea" class="answerArea"></div>
+
+        <div class="actions">
+          <button id="submitBtn" class="btn primary">✔️ Submit Answer</button>
+          <button id="skipBtn" class="btn ghost">Skip ⏭️</button>
+          <button id="nextBtn" class="btn primary hidden">Next Question ➡️</button>
+          <button id="closeEnoughBtn" class="btn close-enough hidden">👍 Close Enough</button>
+        </div>
+
+        <div id="feedback" class="feedback hidden" aria-live="assertive"></div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div id="footerHint">Replace <code>content/current.json</code> each week with new questions!</div>
+      <button id="resetBtn" class="btn ghost reset-btn">🔄 Reset Progress</button>
+    </footer>
+  </div>
+
+  <!-- Level Up Modal -->
+  <div id="levelUpModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-icon">🎉</div>
+      <h2>Level Up!</h2>
+      <p id="levelUpMessage">You reached a new level!</p>
+      <button id="levelUpClose" class="btn primary">Awesome!</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

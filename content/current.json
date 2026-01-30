@@ -1,0 +1,211 @@
+{
+  "title": "Science Study Guide - Rocks & Soil",
+  "testDate": "2/13",
+  "rules": {
+    "noExtraInfo": true
+  },
+  "questions": [
+    {
+      "id": "vocab-mineral-def",
+      "type": "short_answer",
+      "prompt": "A mineral is a ______.",
+      "answer": "non-living solid that has a crystal form"
+    },
+    {
+      "id": "vocab-texture-def",
+      "type": "short_answer",
+      "prompt": "Texture is a property that can describe the ______ of a rock.",
+      "answer": "grain size"
+    },
+    {
+      "id": "vocab-weathering-def",
+      "type": "short_answer",
+      "prompt": "Weathering is the ______ of rocks into smaller pieces.",
+      "answer": "breaking down"
+    },
+    {
+      "id": "vocab-soil-def",
+      "type": "short_answer",
+      "prompt": "Soil is a mixture of ______.",
+      "answer": "water, air, pieces of rock, and dead plants and animals"
+    },
+    {
+      "id": "tf-mineral-living",
+      "type": "true_false",
+      "prompt": "A mineral is living.",
+      "answer": false
+    },
+    {
+      "id": "mc-texture-means",
+      "type": "multiple_choice",
+      "prompt": "Texture describes the:",
+      "choices": [
+        "grain size of a rock",
+        "color of a rock",
+        "temperature of a rock",
+        "smell of a rock"
+      ],
+      "answer": "grain size of a rock"
+    },
+    {
+      "id": "mc-weathering-means",
+      "type": "multiple_choice",
+      "prompt": "Weathering means:",
+      "choices": [
+        "breaking rocks into smaller pieces",
+        "melting rocks into liquid",
+        "painting rocks",
+        "gluing rocks together"
+      ],
+      "answer": "breaking rocks into smaller pieces"
+    },
+    {
+      "id": "mc-soil-includes",
+      "type": "multiple_choice",
+      "prompt": "Which is part of soil?",
+      "choices": [
+        "water and air",
+        "only water",
+        "only air",
+        "only dead plants"
+      ],
+      "answer": "water and air"
+    },
+    {
+      "id": "concept-reese-soil",
+      "type": "multiple_choice",
+      "prompt": "Reese dug up soil. To find out if it was sand or silt, what did she observe?",
+      "choices": [
+        "the size of the particles",
+        "the smell of the soil",
+        "the color of the soil",
+        "the temperature of the soil"
+      ],
+      "answer": "the size of the particles"
+    },
+    {
+      "id": "concept-particles-different-sizes",
+      "type": "true_false",
+      "prompt": "Particles of rock in soil are all the same size.",
+      "answer": false
+    },
+    {
+      "id": "concept-order-big-small",
+      "type": "order",
+      "prompt": "Put these soil particles in order from biggest to smallest.",
+      "items": ["clay", "silt", "sand"],
+      "answerOrder": ["sand", "silt", "clay"]
+    },
+    {
+      "id": "concept-order-small-big",
+      "type": "order",
+      "prompt": "Put these soil particles in order from smallest to biggest.",
+      "items": ["sand", "clay", "silt"],
+      "answerOrder": ["clay", "silt", "sand"]
+    },
+    {
+      "id": "concept-icecube-sand-clay-1",
+      "type": "multiple_choice",
+      "prompt": "If you push an ice cube across sand and clay, what will the sand do to the clay?",
+      "choices": [
+        "scratch the clay",
+        "freeze the clay",
+        "turn the clay into water",
+        "make the clay disappear"
+      ],
+      "answer": "scratch the clay"
+    },
+    {
+      "id": "concept-icecube-sand-clay-2",
+      "type": "short_answer",
+      "prompt": "If you push an ice cube across sand and clay, the ice cube will also move the ______ aside.",
+      "answer": "clay"
+    },
+    {
+      "id": "concept-hardness-between-1-2",
+      "type": "multiple_choice",
+      "prompt": "If you can scratch a rock with your fingernail but not with a steel nail, the rock’s hardness would be between:",
+      "choices": ["1 & 2", "3 & 4", "5 & 6", "7 & 8"],
+      "answer": "1 & 2"
+    },
+    {
+      "id": "concept-hardness-tf",
+      "type": "true_false",
+      "prompt": "If you can scratch a rock with your fingernail but not with a steel nail, the hardness is between 1 & 2.",
+      "answer": true
+    },
+    {
+      "id": "concept-leaves-surface-litter",
+      "type": "short_answer",
+      "prompt": "When leaves on some trees fall off in the fall, they become part of ______ first.",
+      "answer": "surface litter"
+    },
+    {
+      "id": "concept-seasons-rock-weak",
+      "type": "multiple_choice",
+      "prompt": "Earth has seasons where weather changes between hot and cold. These changes:",
+      "choices": [
+        "make the rock weak and help it turn into soil",
+        "make rocks glow in the dark",
+        "stop rocks from breaking",
+        "make soil disappear"
+      ],
+      "answer": "make the rock weak and help it turn into soil"
+    },
+    {
+      "id": "concept-luster-definition",
+      "type": "multiple_choice",
+      "prompt": "To classify rocks based on luster, you observe:",
+      "choices": [
+        "how the light reflects off the rocks' surfaces",
+        "how heavy the rock is",
+        "how loud the rock sounds",
+        "how warm the rock feels"
+      ],
+      "answer": "how the light reflects off the rocks' surfaces"
+    },
+    {
+      "id": "concept-luster-short",
+      "type": "short_answer",
+      "prompt": "To classify rocks based on luster, observe how the ______ reflects off the rocks’ surfaces.",
+      "answer": "light"
+    },
+    {
+      "id": "concept-erosion-helpful",
+      "type": "short_answer",
+      "prompt": "An example of a helpful effect of erosion is a ______ forming.",
+      "answer": "river delta"
+    },
+    {
+      "id": "concept-erosion-helpful-mc",
+      "type": "multiple_choice",
+      "prompt": "Which is listed as a helpful effect of erosion?",
+      "choices": ["river delta forming", "rocks growing bigger", "soil disappearing", "air turning into water"],
+      "answer": "river delta forming"
+    },
+    {
+      "id": "picture-landform-cause",
+      "type": "short_answer",
+      "prompt": "This picture is an example of a landform that is made by erosion caused by ______ and ______.",
+      "answer": "wind and waves"
+    },
+    {
+      "id": "picture-landform-tf",
+      "type": "true_false",
+      "prompt": "The picture is an example of a landform made by erosion caused by wind and waves.",
+      "answer": true
+    },
+    {
+      "id": "review-soil-mix-mc",
+      "type": "multiple_choice",
+      "prompt": "Soil is a mixture of:",
+      "choices": [
+        "water, air, pieces of rock, and dead plants and animals",
+        "only rocks",
+        "only dead plants",
+        "only water and sand"
+      ],
+      "answer": "water, air, pieces of rock, and dead plants and animals"
+    }
+  ]
+}
