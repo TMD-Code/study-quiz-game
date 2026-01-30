@@ -15,6 +15,10 @@ let qIndex = 0;
 let totalQs = 0;
 let bossCorrect = 0; // Track mastered questions in Boss mode
 
+// ============ QUIZ SELECTION ============
+let quizManifest = [];
+let currentQuizFile = null; // Set after loading manifest
+
 // ============ PERSISTENT STATE (localStorage) ============
 const STORAGE_KEY = "studyQuizSave";
 let gameData = {
@@ -24,7 +28,8 @@ let gameData = {
   totalWrong: 0,
   unlockedThemes: ["default"],
   currentTheme: "default",
-  mastery: {} // questionId -> mastery score (0-5)
+  currentQuiz: null, // Set after loading manifest
+  mastery: {} // quizFile -> { questionId -> mastery score (0-5) }
 };
 
 // ============ LEVEL & THEME CONFIG ============
@@ -169,6 +174,7 @@ const levelUpModal = el("levelUpModal");
 const levelUpMessage = el("levelUpMessage");
 const levelUpClose = el("levelUpClose");
 const studyArea = el("studyArea");
+const quizSelect = el("quizSelect");
 
 // ============ LOCAL STORAGE ============
 function saveGame() {
@@ -306,16 +312,25 @@ function updateThemeSelector() {
 }
 
 // ============ MASTERY & SPACED REPETITION ============
+function getQuizMastery() {
+  // Ensure mastery object exists for current quiz
+  if (!gameData.mastery[currentQuizFile]) {
+    gameData.mastery[currentQuizFile] = {};
+  }
+  return gameData.mastery[currentQuizFile];
+}
+
 function getMastery(questionId) {
-  return gameData.mastery[questionId] || 0;
+  return getQuizMastery()[questionId] || 0;
 }
 
 function updateMastery(questionId, correct) {
-  const current = getMastery(questionId);
+  const quizMastery = getQuizMastery();
+  const currentScore = getMastery(questionId);
   if (correct) {
-    gameData.mastery[questionId] = Math.min(current + 1, 5);
+    quizMastery[questionId] = Math.min(currentScore + 1, 5);
   } else {
-    gameData.mastery[questionId] = Math.max(current - 1, 0);
+    quizMastery[questionId] = Math.max(currentScore - 1, 0);
   }
   saveGame();
   updateMasteryDisplay();
@@ -464,6 +479,42 @@ function validateContent(json) {
 // ============ CONTENT LOADING ============
 const loadingIndicator = el("loadingIndicator");
 
+async function loadManifest() {
+  try {
+    const res = await fetch("content/quizzes.json", { cache: "no-store" });
+    if (!res.ok) {
+      // Fallback to just current.json if manifest doesn't exist
+      quizManifest = [{ file: "current.json", name: "Current Quiz", subject: "" }];
+      return;
+    }
+    quizManifest = await res.json();
+    if (!Array.isArray(quizManifest) || quizManifest.length === 0) {
+      quizManifest = [{ file: "current.json", name: "Current Quiz", subject: "" }];
+    }
+  } catch (e) {
+    console.warn("Could not load quiz manifest, using default", e);
+    quizManifest = [{ file: "current.json", name: "Current Quiz", subject: "" }];
+  }
+}
+
+function updateQuizSelector() {
+  quizSelect.innerHTML = "";
+  quizManifest.forEach(quiz => {
+    const opt = document.createElement("option");
+    opt.value = quiz.file;
+    opt.textContent = quiz.subject ? `${quiz.subject}: ${quiz.name}` : quiz.name;
+    if (quiz.file === currentQuizFile) opt.selected = true;
+    quizSelect.appendChild(opt);
+  });
+}
+
+async function switchQuiz(quizFile) {
+  currentQuizFile = quizFile;
+  gameData.currentQuiz = quizFile;
+  saveGame();
+  await loadContent();
+}
+
 async function loadContent() {
   clearError();
   loadingIndicator.classList.remove("hidden");
@@ -471,8 +522,8 @@ async function loadContent() {
   if (studyArea) studyArea.classList.add("hidden");
 
   try {
-    const res = await fetch("content/current.json", { cache: "no-store" });
-    if (!res.ok) throw new Error(`Could not load content/current.json (HTTP ${res.status}).`);
+    const res = await fetch(`content/${currentQuizFile}`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Could not load content/${currentQuizFile} (HTTP ${res.status}).`);
     const json = await res.json();
     validateContent(json);
     CONTENT = json;
@@ -957,7 +1008,8 @@ function onCloseEnough() {
   const xpEarned = awardXP(10);
 
   // Update mastery positively (undo the -1, then +1)
-  gameData.mastery[current.id] = Math.min((gameData.mastery[current.id] || 0) + 2, 5);
+  const quizMastery = getQuizMastery();
+  quizMastery[current.id] = Math.min((quizMastery[current.id] || 0) + 2, 5);
   saveGame();
   updateMasteryDisplay();
 
@@ -1001,6 +1053,8 @@ function initUI() {
 
   themeSelect.onchange = (e) => applyTheme(e.target.value);
 
+  quizSelect.onchange = (e) => switchQuiz(e.target.value);
+
   levelUpClose.onclick = () => levelUpModal.classList.add("hidden");
 
   // Study mode controls
@@ -1035,8 +1089,23 @@ function initUI() {
 }
 
 // ============ INITIALIZATION ============
-function init() {
+async function init() {
   loadGame();
+
+  // Load manifest first
+  await loadManifest();
+
+  // Restore saved quiz selection, or use first quiz from manifest
+  currentQuizFile = gameData.currentQuiz || quizManifest[0]?.file || "current.json";
+
+  // Verify the saved quiz still exists in manifest, otherwise use first
+  if (!quizManifest.find(q => q.file === currentQuizFile)) {
+    currentQuizFile = quizManifest[0]?.file || "current.json";
+    gameData.currentQuiz = currentQuizFile;
+    saveGame();
+  }
+
+  updateQuizSelector();
   updateXPDisplay();
   updateThemeSelector();
   applyTheme(gameData.currentTheme);
