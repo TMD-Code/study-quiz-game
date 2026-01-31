@@ -1,0 +1,20 @@
+[
+  { "id": "puppy", "file": "puppy.png", "name": "Happy Puppy", "emoji": "🐶" },
+  { "id": "kitten", "file": "kitten.png", "name": "Curious Kitten", "emoji": "🐱" },
+  { "id": "bunny", "file": "bunny.png", "name": "Fluffy Bunny", "emoji": "🐰" },
+  { "id": "panda", "file": "panda.png", "name": "Cuddly Panda", "emoji": "🐼" },
+  { "id": "fox", "file": "fox.png", "name": "Clever Fox", "emoji": "🦊" },
+  { "id": "owl", "file": "owl.png", "name": "Wise Owl", "emoji": "🦉" },
+  { "id": "penguin", "file": "penguin.png", "name": "Playful Penguin", "emoji": "🐧" },
+  { "id": "koala", "file": "koala.png", "name": "Sleepy Koala", "emoji": "🐨" },
+  { "id": "hamster", "file": "hamster.png", "name": "Tiny Hamster", "emoji": "🐹" },
+  { "id": "hedgehog", "file": "hedgehog.png", "name": "Spiky Hedgehog", "emoji": "🦔" },
+  { "id": "sloth", "file": "sloth.png", "name": "Chill Sloth", "emoji": "🦥" },
+  { "id": "otter", "file": "otter.png", "name": "Silly Otter", "emoji": "🦦" },
+  { "id": "deer", "file": "deer.png", "name": "Baby Deer", "emoji": "🦌" },
+  { "id": "duck", "file": "duck.png", "name": "Lucky Duck", "emoji": "🦆" },
+  { "id": "frog", "file": "frog.png", "name": "Friendly Frog", "emoji": "🐸" },
+  { "id": "bear", "file": "bear.png", "name": "Bear Cub", "emoji": "🐻" },
+  { "id": "raccoon", "file": "raccoon.png", "name": "Sneaky Raccoon", "emoji": "🦝" },
+  { "id": "unicorn", "file": "unicorn.png", "name": "Magical Unicorn", "emoji": "🦄" }
+]

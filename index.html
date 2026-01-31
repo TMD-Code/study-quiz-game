@@ -22,7 +22,7 @@
         </div>
         <label class="pill">
           <input type="checkbox" id="lenientToggle" />
-          <span>Lenient</span>
+          <span>Accept Close Answers</span>
         </label>
         <button id="reloadBtn" class="btn ghost" title="Reload questions" aria-label="Reload questions">↻</button>
       </div>
@@ -47,10 +47,10 @@
     </section>
 
     <section class="modeBar">
-      <button class="btn mode-btn" id="modeStudy">📚 Study</button>
-      <button class="btn mode-btn" id="modePractice">🎯 Practice</button>
-      <button class="btn mode-btn" id="modeStreak">🔥 Streak</button>
-      <button class="btn mode-btn" id="modeBoss">👑 Boss</button>
+      <button class="btn mode-btn" id="modeStudy">📚 Study<br><small>Look at answers first</small></button>
+      <button class="btn mode-btn" id="modePractice">🎯 Practice<br><small>Learn at your own pace</small></button>
+      <button class="btn mode-btn" id="modeStreak">🔥 Streak<br><small>2 wrong and you're out!</small></button>
+      <button class="btn mode-btn" id="modeBoss">👑 Boss<br><small>Keep going until you get them all</small></button>
     </section>
 
     <main class="card">
@@ -91,8 +91,8 @@
     </main>
 
     <footer class="footer">
-      <div id="footerHint">Add new study guides to <code>content/</code> folder and update <code>quizzes.json</code></div>
-      <button id="resetBtn" class="btn ghost reset-btn">🔄 Reset Progress</button>
+      <div id="footerHint" class="parent-hint">For parents: Add study guides to <code>content/</code> folder</div>
+      <button id="resetBtn" class="btn ghost reset-btn">🔄 Start Over</button>
     </footer>
   </div>
 
@@ -105,6 +105,33 @@
       <button id="levelUpClose" class="btn primary">Awesome!</button>
     </div>
   </div>
+
+  <!-- Riddle Modal -->
+  <div id="riddleModal" class="modal hidden">
+    <div class="modal-content riddle-modal">
+      <div class="modal-icon" id="riddleIcon">🎁</div>
+      <h2>Riddle Time!</h2>
+      <p id="riddleQuestion" class="riddle-question"></p>
+      <button id="riddleReveal" class="btn primary">Show Answer!</button>
+      <p id="riddleAnswer" class="riddle-answer hidden"></p>
+      <div id="stickerReward" class="sticker-reward hidden">
+        <p>You earned a sticker!</p>
+        <div id="rewardStickerPreview" class="reward-sticker-preview"></div>
+        <p id="rewardStickerName" class="reward-sticker-name"></p>
+      </div>
+      <button id="riddleClose" class="btn primary hidden">Collect Sticker! 🎉</button>
+    </div>
+  </div>
+
+  <!-- Sticker Sidebar -->
+  <aside id="stickerSidebar" class="sticker-sidebar">
+    <div class="sticker-header">
+      <span>🌟 My Stickers</span>
+      <span id="stickerCount" class="sticker-count">0</span>
+    </div>
+    <div id="stickerGrid" class="sticker-grid"></div>
+    <div id="stickerEmpty" class="sticker-empty">Get a streak to earn stickers!</div>
+  </aside>
 
   <script src="app.js"></script>
 </body>

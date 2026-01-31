@@ -19,6 +19,15 @@ let bossCorrect = 0; // Track mastered questions in Boss mode
 let quizManifest = [];
 let currentQuizFile = null; // Set after loading manifest
 
+// ============ RIDDLES & STICKERS (SESSION ONLY) ============
+let riddles = [];
+let stickersManifest = [];
+let sessionStickers = []; // Resets on page load
+let usedRiddleIndices = []; // Track used riddles this session
+let lastStreakMilestone = 0; // Track which milestone we last rewarded
+const STREAK_MILESTONES = [3, 5, 7, 10, 15, 20, 25, 30]; // Earn sticker at these streaks
+let pendingSticker = null; // Sticker waiting to be collected
+
 // ============ PERSISTENT STATE (localStorage) ============
 const STORAGE_KEY = "studyQuizSave";
 let gameData = {
@@ -377,6 +386,206 @@ function triggerConfetti(count = 30) {
   }, 3000);
 }
 
+// ============ RIDDLES & STICKERS SYSTEM ============
+async function loadRiddles() {
+  try {
+    const res = await fetch("content/riddles.json", { cache: "no-store" });
+    if (res.ok) {
+      riddles = await res.json();
+    }
+  } catch (e) {
+    console.warn("Could not load riddles", e);
+  }
+}
+
+async function loadStickersManifest() {
+  try {
+    const res = await fetch("content/stickers.json", { cache: "no-store" });
+    if (res.ok) {
+      stickersManifest = await res.json();
+    }
+  } catch (e) {
+    console.warn("Could not load stickers manifest", e);
+  }
+}
+
+function getRandomRiddle() {
+  if (riddles.length === 0) return null;
+
+  // If all riddles used, reset
+  if (usedRiddleIndices.length >= riddles.length) {
+    usedRiddleIndices = [];
+  }
+
+  // Find unused riddle
+  let index;
+  do {
+    index = Math.floor(Math.random() * riddles.length);
+  } while (usedRiddleIndices.includes(index));
+
+  usedRiddleIndices.push(index);
+  return riddles[index];
+}
+
+function getRandomSticker() {
+  if (stickersManifest.length === 0) return null;
+
+  // Get stickers not yet earned this session
+  const earnedIds = sessionStickers.map(s => s.id);
+  const available = stickersManifest.filter(s => !earnedIds.includes(s.id));
+
+  // If all stickers earned, allow duplicates
+  const pool = available.length > 0 ? available : stickersManifest;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function checkStreakReward(currentStreak) {
+  // Find the highest milestone we've reached
+  const milestone = STREAK_MILESTONES.find(m => currentStreak === m);
+
+  if (milestone && milestone > lastStreakMilestone) {
+    lastStreakMilestone = milestone;
+
+    // Get a riddle and sticker
+    const riddle = getRandomRiddle();
+    const sticker = getRandomSticker();
+
+    if (riddle && sticker) {
+      pendingSticker = sticker;
+      showRiddleModal(riddle, sticker);
+    }
+  }
+}
+
+function showRiddleModal(riddle, sticker) {
+  const riddleModal = el("riddleModal");
+  const riddleQuestion = el("riddleQuestion");
+  const riddleAnswer = el("riddleAnswer");
+  const riddleReveal = el("riddleReveal");
+  const riddleClose = el("riddleClose");
+  const stickerReward = el("stickerReward");
+  const rewardStickerPreview = el("rewardStickerPreview");
+  const rewardStickerName = el("rewardStickerName");
+
+  // Reset state
+  riddleQuestion.textContent = riddle.question;
+  riddleAnswer.textContent = riddle.answer;
+  riddleAnswer.classList.add("hidden");
+  riddleReveal.classList.remove("hidden");
+  riddleClose.classList.add("hidden");
+  stickerReward.classList.add("hidden");
+
+  // Show modal
+  riddleModal.classList.remove("hidden");
+
+  // Play a fun sound
+  playTone(523.25, 0.1, "sine", 0.2);
+  setTimeout(() => playTone(659.25, 0.1, "sine", 0.2), 100);
+}
+
+function onRiddleReveal() {
+  const riddleAnswer = el("riddleAnswer");
+  const riddleReveal = el("riddleReveal");
+  const riddleClose = el("riddleClose");
+  const stickerReward = el("stickerReward");
+  const rewardStickerPreview = el("rewardStickerPreview");
+  const rewardStickerName = el("rewardStickerName");
+
+  // Show answer
+  riddleAnswer.classList.remove("hidden");
+  riddleReveal.classList.add("hidden");
+
+  // Show sticker reward
+  if (pendingSticker) {
+    // Try to load image, fallback to emoji
+    const imgPath = `content/stickers/${pendingSticker.file}`;
+    const img = new Image();
+    img.onload = () => {
+      rewardStickerPreview.innerHTML = `<img src="${imgPath}" alt="${pendingSticker.name}" />`;
+    };
+    img.onerror = () => {
+      rewardStickerPreview.textContent = pendingSticker.emoji || "🌟";
+    };
+    img.src = imgPath;
+
+    // Initially show emoji while image loads
+    rewardStickerPreview.textContent = pendingSticker.emoji || "🌟";
+    rewardStickerName.textContent = pendingSticker.name;
+    stickerReward.classList.remove("hidden");
+  }
+
+  riddleClose.classList.remove("hidden");
+
+  // Play reveal sound
+  playCorrectSound();
+}
+
+function onRiddleClose() {
+  const riddleModal = el("riddleModal");
+  riddleModal.classList.add("hidden");
+
+  // Award the sticker
+  if (pendingSticker) {
+    awardSticker(pendingSticker);
+    pendingSticker = null;
+  }
+}
+
+function awardSticker(sticker) {
+  sessionStickers.push(sticker);
+  updateStickerSidebar();
+
+  // Play sticker earned sound
+  playStreakSound();
+  triggerConfetti(15);
+}
+
+function updateStickerSidebar() {
+  const stickerGrid = el("stickerGrid");
+  const stickerCount = el("stickerCount");
+  const stickerEmpty = el("stickerEmpty");
+
+  stickerCount.textContent = sessionStickers.length;
+
+  if (sessionStickers.length === 0) {
+    stickerGrid.innerHTML = "";
+    stickerEmpty.classList.remove("hidden");
+    return;
+  }
+
+  stickerEmpty.classList.add("hidden");
+  stickerGrid.innerHTML = "";
+
+  sessionStickers.forEach(sticker => {
+    const item = document.createElement("div");
+    item.className = "sticker-item";
+    item.title = sticker.name;
+
+    // Try to load image
+    const imgPath = `content/stickers/${sticker.file}`;
+    const img = new Image();
+    img.onload = () => {
+      item.innerHTML = `<img src="${imgPath}" alt="${sticker.name}" />`;
+    };
+    img.onerror = () => {
+      item.textContent = sticker.emoji || "🌟";
+    };
+    img.src = imgPath;
+
+    // Initially show emoji
+    item.textContent = sticker.emoji || "🌟";
+
+    stickerGrid.appendChild(item);
+  });
+}
+
+function resetSessionStickers() {
+  sessionStickers = [];
+  usedRiddleIndices = [];
+  lastStreakMilestone = 0;
+  updateStickerSidebar();
+}
+
 // ============ UTILITY ============
 function showError(msg) {
   errorBox.textContent = msg;
@@ -573,6 +782,9 @@ function startMode(newMode) {
   inSkippedPhase = false;
   studyIndex = 0;
 
+  // Reset streak milestone tracking (but keep collected stickers visible)
+  lastStreakMilestone = 0;
+
   // Highlight the active mode button
   updateActiveModeButton(newMode);
 
@@ -660,7 +872,7 @@ function renderStudyCard() {
   studyCard.innerHTML = `
     <div class="study-type">${typeLabel}</div>
     <div class="study-question">${q.prompt}</div>
-    <div class="study-divider">tap to see answer</div>
+    <div class="study-divider">👆 Tap anywhere to see the answer!</div>
     <div class="study-answer hidden">${answerText}</div>
     <div class="study-mastery">${masteryStars}</div>
   `;
@@ -924,6 +1136,9 @@ function onSubmit() {
 
     const streakBonus = streak >= 3 ? ` (${streak} streak! 🔥)` : "";
     showFeedback(`Correct! +${xpEarned} XP${streakBonus} 🎉`, true);
+
+    // Check for streak milestone reward (riddle + sticker)
+    checkStreakReward(streak);
   } else {
     streak = 0;
     gameData.totalWrong++;
@@ -1057,6 +1272,10 @@ function initUI() {
 
   levelUpClose.onclick = () => levelUpModal.classList.add("hidden");
 
+  // Riddle modal controls
+  el("riddleReveal").onclick = onRiddleReveal;
+  el("riddleClose").onclick = onRiddleClose;
+
   // Study mode controls
   el("studyPrev").onclick = studyPrevCard;
   el("studyNext").onclick = studyNextCard;
@@ -1094,6 +1313,10 @@ async function init() {
 
   // Load manifest first
   await loadManifest();
+
+  // Load riddles and stickers for engagement features
+  await Promise.all([loadRiddles(), loadStickersManifest()]);
+  updateStickerSidebar();
 
   // Restore saved quiz selection, or use first quiz from manifest
   currentQuizFile = gameData.currentQuiz || quizManifest[0]?.file || "current.json";
