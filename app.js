@@ -66,7 +66,7 @@ const LEVELS = [
 
 const THEMES = {
   default: { name: "Default", primary: "#4f46e5", accent: "#22c55e", bg: "#0b1220" },
-  ocean: { name: "Ocean", primary: "#0891b2", accent: "#06b6d4", bg: "#0c1929" },
+  ocean: { name: "Ocean", primary: "#0891b2", accent: "#06b6d4", bg: "#041f2d" },
   forest: { name: "Forest", primary: "#16a34a", accent: "#84cc16", bg: "#0f1f0f" },
   sunset: { name: "Sunset", primary: "#ea580c", accent: "#f59e0b", bg: "#1f1410" },
   galaxy: { name: "Galaxy", primary: "#7c3aed", accent: "#a855f7", bg: "#0f0a1f" },
