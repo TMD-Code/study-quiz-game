@@ -1,0 +1,107 @@
+[
+  {
+    "id": "first_correct",
+    "name": "First Steps",
+    "description": "Answer your first question correctly",
+    "icon": "🌱",
+    "condition": "totalCorrect >= 1"
+  },
+  {
+    "id": "streak_5",
+    "name": "On Fire",
+    "description": "Get a streak of 5 correct answers",
+    "icon": "🔥",
+    "condition": "streak >= 5"
+  },
+  {
+    "id": "streak_10",
+    "name": "Unstoppable",
+    "description": "Get a streak of 10 correct answers",
+    "icon": "⚡",
+    "condition": "streak >= 10"
+  },
+  {
+    "id": "correct_25",
+    "name": "Quick Learner",
+    "description": "Answer 25 questions correctly",
+    "icon": "📚",
+    "condition": "totalCorrect >= 25"
+  },
+  {
+    "id": "correct_50",
+    "name": "Knowledge Seeker",
+    "description": "Answer 50 questions correctly",
+    "icon": "🎓",
+    "condition": "totalCorrect >= 50"
+  },
+  {
+    "id": "correct_100",
+    "name": "Super Scholar",
+    "description": "Answer 100 questions correctly",
+    "icon": "🏆",
+    "condition": "totalCorrect >= 100"
+  },
+  {
+    "id": "mastery_1",
+    "name": "First Star",
+    "description": "Master your first question",
+    "icon": "⭐",
+    "condition": "masteredCount >= 1"
+  },
+  {
+    "id": "mastery_5",
+    "name": "Rising Star",
+    "description": "Master 5 questions",
+    "icon": "🌟",
+    "condition": "masteredCount >= 5"
+  },
+  {
+    "id": "mastery_all",
+    "name": "Quiz Champion",
+    "description": "Master all questions in a quiz",
+    "icon": "👑",
+    "condition": "masteredAll"
+  },
+  {
+    "id": "boss_complete",
+    "name": "Boss Slayer",
+    "description": "Complete Boss Mode",
+    "icon": "🐉",
+    "condition": "bossComplete"
+  },
+  {
+    "id": "study_3_days",
+    "name": "Dedicated",
+    "description": "Study 3 days in a row",
+    "icon": "📅",
+    "condition": "studyStreak >= 3"
+  },
+  {
+    "id": "study_7_days",
+    "name": "Study Star",
+    "description": "Study 7 days in a row",
+    "icon": "🌈",
+    "condition": "studyStreak >= 7"
+  },
+  {
+    "id": "level_3",
+    "name": "Scholar",
+    "description": "Reach Level 3",
+    "icon": "📖",
+    "condition": "level >= 3"
+  },
+  {
+    "id": "level_5",
+    "name": "Master",
+    "description": "Reach Level 5",
+    "icon": "🎖️",
+    "condition": "level >= 5"
+  },
+  {
+    "id": "xp_500",
+    "name": "XP Hunter",
+    "description": "Earn 500 total XP",
+    "icon": "💎",
+    "condition": "xp >= 500"
+  }
+]

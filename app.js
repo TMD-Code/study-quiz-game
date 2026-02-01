@@ -1,6 +1,6 @@
 // ============ GAME STATE ============
 let CONTENT = null;
-let mode = "practice"; // practice | streak | boss | study
+let mode = "practice"; // practice | streak | boss | study | challenge
 let queue = [];
 let bossPool = [];
 let skipped = [];
@@ -14,6 +14,11 @@ let misses = 0;
 let qIndex = 0;
 let totalQs = 0;
 let bossCorrect = 0; // Track mastered questions in Boss mode
+
+// Challenge mode state
+let challengePlayer = 1; // 1 or 2
+let challengeScore1 = 0;
+let challengeScore2 = 0;
 
 // ============ QUIZ SELECTION ============
 let quizManifest = [];
@@ -38,7 +43,15 @@ let gameData = {
   unlockedThemes: ["default"],
   currentTheme: "default",
   currentQuiz: null, // Set after loading manifest
-  mastery: {} // quizFile -> { questionId -> mastery score (0-5) }
+  mastery: {}, // quizFile -> { questionId -> mastery score (0-5) }
+  seenQuestions: {}, // quizFile -> [questionIds that have been introduced]
+  // Daily goals
+  dailyGoal: 10, // Questions to answer per day
+  dailyProgress: 0, // Questions answered today
+  dailyDate: null, // Date string for today's progress
+  studyDays: [], // Array of date strings when goal was met
+  voiceEnabled: false, // Read questions aloud
+  earnedBadges: [] // Permanent achievement badges
 };
 
 // ============ LEVEL & THEME CONFIG ============
@@ -150,6 +163,80 @@ function playStreakSound() {
   notes.forEach((freq, i) => {
     setTimeout(() => playTone(freq, 0.12, "triangle", 0.2), i * 60);
   });
+}
+
+// ============ VOICE READ-ALOUD SYSTEM ============
+let voiceEnabled = false;
+let speechSynthesis = window.speechSynthesis;
+
+const VOICE_CELEBRATIONS = [
+  "Awesome!",
+  "Great job!",
+  "You're amazing!",
+  "Super smart!",
+  "Fantastic!",
+  "You got it!",
+  "Wonderful!",
+  "Keep it up!",
+  "Brilliant!",
+  "Way to go!"
+];
+
+const VOICE_ENCOURAGEMENTS = [
+  "That's okay, keep trying!",
+  "You'll get it next time!",
+  "Don't give up!",
+  "Learning takes practice!",
+  "You're doing great!"
+];
+
+function speak(text, rate = 0.9, pitch = 1.1) {
+  if (!voiceEnabled || !speechSynthesis) return;
+
+  // Cancel any ongoing speech
+  speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = rate;
+  utterance.pitch = pitch;
+  utterance.volume = 0.8;
+
+  // Try to get a friendly voice
+  const voices = speechSynthesis.getVoices();
+  const preferredVoice = voices.find(v =>
+    v.name.includes("Female") ||
+    v.name.includes("Samantha") ||
+    v.name.includes("Google") ||
+    v.lang.startsWith("en")
+  );
+  if (preferredVoice) {
+    utterance.voice = preferredVoice;
+  }
+
+  speechSynthesis.speak(utterance);
+}
+
+function speakQuestion(text) {
+  speak(text, 0.85, 1.0);
+}
+
+function speakCelebration() {
+  const phrase = VOICE_CELEBRATIONS[Math.floor(Math.random() * VOICE_CELEBRATIONS.length)];
+  speak(phrase, 1.0, 1.2);
+}
+
+function speakEncouragement() {
+  const phrase = VOICE_ENCOURAGEMENTS[Math.floor(Math.random() * VOICE_ENCOURAGEMENTS.length)];
+  speak(phrase, 0.9, 1.0);
+}
+
+function toggleVoice(enabled) {
+  voiceEnabled = enabled;
+  gameData.voiceEnabled = enabled;
+  saveGame();
+  if (enabled) {
+    speak("Voice is on!", 1.0, 1.1);
+  }
 }
 
 // ============ DOM ELEMENTS ============
@@ -284,6 +371,9 @@ function onLevelUp(newLevel) {
   // Show celebration
   levelUpModal.classList.remove("hidden");
   triggerConfetti(50);
+
+  // Check achievements
+  checkAchievements();
 }
 
 // ============ THEME SYSTEM ============
@@ -318,6 +408,583 @@ function updateThemeSelector() {
       themeHint.classList.remove("hidden");
     }
   }
+}
+
+// ============ CHALLENGE MODE ============
+function updateChallengeDisplay() {
+  const turnEl = el("challengeTurn");
+  const score1El = el("player1Score");
+  const score2El = el("player2Score");
+
+  if (challengePlayer === 1) {
+    turnEl.textContent = "Your Turn! 💪";
+    turnEl.className = "challenge-turn player1";
+    score1El.classList.add("active");
+    score2El.classList.remove("active");
+  } else {
+    turnEl.textContent = "Friend's Turn! 🎯";
+    turnEl.className = "challenge-turn player2";
+    score1El.classList.remove("active");
+    score2El.classList.add("active");
+  }
+
+  score1El.textContent = `You: ${challengeScore1}`;
+  score2El.textContent = `Friend: ${challengeScore2}`;
+}
+
+function switchChallengePlayer() {
+  challengePlayer = challengePlayer === 1 ? 2 : 1;
+  updateChallengeDisplay();
+}
+
+function showChallengeCompletion() {
+  const winner = challengeScore1 > challengeScore2 ? "You win!" :
+                 challengeScore2 > challengeScore1 ? "Friend wins!" :
+                 "It's a tie!";
+
+  let message = "";
+  if (challengeScore1 === challengeScore2) {
+    message = "Great teamwork! You both did amazing! 🤝";
+  } else {
+    message = "Great game! You both did awesome! 🎉";
+  }
+
+  promptEl.textContent = "Challenge Complete! 🏆";
+  answerArea.innerHTML = `
+    <div class="challenge-complete">
+      <div class="challenge-result">${winner}</div>
+      <div class="challenge-final-scores">
+        <div class="final-score-card player1">
+          <div class="final-score-label">You</div>
+          <div class="final-score-value">${challengeScore1}</div>
+        </div>
+        <div class="final-score-card player2">
+          <div class="final-score-label">Friend</div>
+          <div class="final-score-value">${challengeScore2}</div>
+        </div>
+      </div>
+      <p>${message}</p>
+    </div>
+  `;
+
+  submitBtn.classList.add("hidden");
+  skipBtn.classList.add("hidden");
+  nextBtn.classList.add("hidden");
+  feedbackEl.classList.add("hidden");
+
+  // Hide challenge indicator
+  el("challengeIndicator").classList.add("hidden");
+
+  triggerConfetti(50);
+  playLevelUpSound();
+}
+
+// ============ ACHIEVEMENT SYSTEM ============
+let achievementsList = [];
+let lastBossComplete = false; // Track boss completion for achievement
+
+async function loadAchievements() {
+  try {
+    const res = await fetch("content/achievements.json", { cache: "no-store" });
+    if (res.ok) {
+      achievementsList = await res.json();
+    }
+  } catch (e) {
+    console.warn("Could not load achievements", e);
+  }
+}
+
+function getAchievementContext() {
+  const masteredCount = CONTENT ? CONTENT.questions.filter(q => getMastery(q.id) >= 5).length : 0;
+  const totalQuestions = CONTENT ? CONTENT.questions.length : 0;
+  const masteredAll = totalQuestions > 0 && masteredCount === totalQuestions;
+
+  return {
+    totalCorrect: gameData.totalCorrect,
+    streak: streak,
+    masteredCount: masteredCount,
+    masteredAll: masteredAll,
+    bossComplete: lastBossComplete,
+    studyStreak: calculateStudyStreak(),
+    level: gameData.level,
+    xp: gameData.xp
+  };
+}
+
+function checkAchievements() {
+  if (!achievementsList.length) return;
+
+  const ctx = getAchievementContext();
+
+  achievementsList.forEach(achievement => {
+    if (gameData.earnedBadges.includes(achievement.id)) return;
+
+    // Evaluate condition
+    let earned = false;
+    try {
+      // Simple condition evaluation
+      const condition = achievement.condition;
+      if (condition.includes(">=")) {
+        const [key, value] = condition.split(">=").map(s => s.trim());
+        earned = ctx[key] >= parseInt(value);
+      } else if (condition === "masteredAll") {
+        earned = ctx.masteredAll;
+      } else if (condition === "bossComplete") {
+        earned = ctx.bossComplete;
+      }
+    } catch (e) {
+      console.warn("Error evaluating achievement condition", e);
+    }
+
+    if (earned) {
+      awardAchievement(achievement);
+    }
+  });
+}
+
+function awardAchievement(achievement) {
+  if (gameData.earnedBadges.includes(achievement.id)) return;
+
+  gameData.earnedBadges.push(achievement.id);
+  saveGame();
+
+  // Show toast notification
+  showAchievementToast(achievement);
+
+  // Play celebration
+  playLevelUpSound();
+  triggerConfetti(25);
+}
+
+function showAchievementToast(achievement) {
+  const toast = el("achievementToast");
+  const icon = el("achievementIcon");
+  const name = el("achievementName");
+
+  icon.textContent = achievement.icon;
+  name.textContent = achievement.name;
+
+  toast.classList.remove("hidden");
+
+  // Auto-hide after 4 seconds
+  setTimeout(() => {
+    toast.classList.add("hidden");
+  }, 4000);
+}
+
+function openTrophyCase() {
+  const modal = el("trophyModal");
+  const grid = el("trophyGrid");
+  const progress = el("trophyProgress");
+
+  grid.innerHTML = "";
+
+  achievementsList.forEach(achievement => {
+    const isEarned = gameData.earnedBadges.includes(achievement.id);
+
+    const item = document.createElement("div");
+    item.className = `trophy-item ${isEarned ? "earned" : "locked"}`;
+    item.innerHTML = `
+      <span class="trophy-icon">${achievement.icon}</span>
+      <span class="trophy-name">${achievement.name}</span>
+      <span class="trophy-desc">${achievement.description}</span>
+    `;
+    grid.appendChild(item);
+  });
+
+  const earnedCount = gameData.earnedBadges.length;
+  const totalCount = achievementsList.length;
+  progress.textContent = `${earnedCount}/${totalCount} badges earned`;
+
+  modal.classList.remove("hidden");
+}
+
+function closeTrophyCase() {
+  el("trophyModal").classList.add("hidden");
+}
+
+// ============ LEARN FIRST MODE ============
+let learnQueue = [];
+let isInLearnPhase = false;
+let currentLearnIndex = 0;
+
+function getSeenQuestions() {
+  if (!gameData.seenQuestions[currentQuizFile]) {
+    gameData.seenQuestions[currentQuizFile] = [];
+  }
+  return gameData.seenQuestions[currentQuizFile];
+}
+
+function isQuestionSeen(questionId) {
+  return getSeenQuestions().includes(questionId);
+}
+
+function markQuestionSeen(questionId) {
+  const seen = getSeenQuestions();
+  if (!seen.includes(questionId)) {
+    seen.push(questionId);
+    saveGame();
+  }
+}
+
+function getUnseenQuestions() {
+  if (!CONTENT || !CONTENT.questions) return [];
+  return CONTENT.questions.filter(q => !isQuestionSeen(q.id));
+}
+
+function startLearnPhase() {
+  learnQueue = getUnseenQuestions();
+  if (learnQueue.length === 0) {
+    // All questions seen, skip to quiz
+    isInLearnPhase = false;
+    return false;
+  }
+
+  isInLearnPhase = true;
+  currentLearnIndex = 0;
+
+  questionBox.classList.add("hidden");
+  studyArea.classList.remove("hidden");
+
+  renderLearnCard();
+  return true;
+}
+
+function renderLearnCard() {
+  const studyCard = el("studyCard");
+  const studyProgress = el("studyProgress");
+  const studyPrev = el("studyPrev");
+  const studyNext = el("studyNext");
+  const studyDone = el("studyDone");
+
+  if (!learnQueue.length) return;
+
+  const q = learnQueue[currentLearnIndex];
+
+  const typeLabels = {
+    multiple_choice: "📋 Multiple Choice",
+    true_false: "✓✗ True or False",
+    short_answer: "✏️ Fill in the Blank",
+    order: "🔢 Put in Order"
+  };
+  const typeLabel = typeLabels[q.type] || q.type;
+
+  let answerText = "";
+  if (q.type === "true_false") {
+    answerText = q.answer ? "✓ True" : "✗ False";
+  } else if (q.type === "order") {
+    answerText = q.answerOrder.join(" → ");
+  } else {
+    answerText = q.answer;
+  }
+
+  studyCard.innerHTML = `
+    <div class="study-type learn-badge">🆕 New Question - Learn It!</div>
+    <div class="study-type">${typeLabel}</div>
+    <div class="study-question">${q.prompt}</div>
+    <div class="study-divider">👆 Tap to see the answer!</div>
+    <div class="study-answer hidden">${answerText}</div>
+  `;
+
+  // Attach click handler for flipping
+  studyCard.onclick = () => {
+    const answer = studyCard.querySelector(".study-answer");
+    const divider = studyCard.querySelector(".study-divider");
+    if (answer) answer.classList.toggle("hidden");
+    if (divider) divider.classList.toggle("hidden");
+  };
+
+  studyProgress.textContent = `Learning: ${currentLearnIndex + 1} of ${learnQueue.length} new questions`;
+  studyPrev.classList.add("hidden"); // No previous in learn mode
+  studyNext.textContent = "Got It! ✅";
+  studyNext.classList.remove("hidden");
+  studyDone.classList.add("hidden");
+
+  // Read question aloud
+  speakQuestion(q.prompt);
+}
+
+function onLearnGotIt() {
+  // Mark current question as seen
+  const q = learnQueue[currentLearnIndex];
+  markQuestionSeen(q.id);
+
+  // Award small XP for learning
+  awardXP(3);
+
+  currentLearnIndex++;
+
+  if (currentLearnIndex >= learnQueue.length) {
+    // Finished learning all new questions
+    finishLearnPhase();
+  } else {
+    renderLearnCard();
+  }
+}
+
+function finishLearnPhase() {
+  isInLearnPhase = false;
+  learnQueue = [];
+  currentLearnIndex = 0;
+
+  studyArea.classList.add("hidden");
+  questionBox.classList.remove("hidden");
+
+  // Show celebratory message
+  showFeedback("Great! You've learned all new questions! Now let's practice! 🎉", true);
+
+  // Start the actual quiz
+  queue = getWeightedQuestions();
+  const seen = new Set();
+  queue = queue.filter(q => {
+    if (seen.has(q.id)) return false;
+    seen.add(q.id);
+    return true;
+  });
+  totalQs = queue.length;
+  qIndex = 0;
+
+  nextQuestion();
+}
+
+// ============ DAILY GOALS ============
+function getTodayString() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+}
+
+function checkDailyReset() {
+  const today = getTodayString();
+  if (gameData.dailyDate !== today) {
+    // New day - reset daily progress
+    gameData.dailyDate = today;
+    gameData.dailyProgress = 0;
+    saveGame();
+  }
+}
+
+function incrementDailyProgress() {
+  checkDailyReset();
+  gameData.dailyProgress++;
+
+  // Check if goal met
+  if (gameData.dailyProgress === gameData.dailyGoal) {
+    const today = getTodayString();
+    if (!gameData.studyDays.includes(today)) {
+      gameData.studyDays.push(today);
+      // Play celebration!
+      playStreakSound();
+      triggerConfetti(20);
+    }
+  }
+
+  saveGame();
+  updateDailyGoalDisplay();
+}
+
+function calculateStudyStreak() {
+  const sortedDays = [...gameData.studyDays].sort().reverse();
+  if (sortedDays.length === 0) return 0;
+
+  let streak = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = 0; i < sortedDays.length; i++) {
+    const checkDate = new Date(today);
+    checkDate.setDate(checkDate.getDate() - i);
+    const checkStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
+
+    if (sortedDays.includes(checkStr)) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+}
+
+function updateDailyGoalDisplay() {
+  checkDailyReset();
+
+  const progressFill = el("dailyProgressFill");
+  const progressText = el("dailyProgressText");
+  const streakEl = el("dailyStreak");
+  const streakDaysEl = el("streakDays");
+  const goalSelect = el("dailyGoalSelect");
+  const calendarGrid = el("calendarGrid");
+
+  // Update goal selector
+  goalSelect.value = gameData.dailyGoal;
+
+  // Update progress bar
+  const percent = Math.min((gameData.dailyProgress / gameData.dailyGoal) * 100, 100);
+  progressFill.style.width = percent + "%";
+  progressFill.classList.toggle("complete", gameData.dailyProgress >= gameData.dailyGoal);
+
+  // Update progress text
+  if (gameData.dailyProgress >= gameData.dailyGoal) {
+    progressText.textContent = `${gameData.dailyProgress}/${gameData.dailyGoal} - Goal complete! Great job! 🎉`;
+  } else {
+    const remaining = gameData.dailyGoal - gameData.dailyProgress;
+    progressText.textContent = `${gameData.dailyProgress}/${gameData.dailyGoal} questions today (${remaining} to go!)`;
+  }
+
+  // Update streak
+  const streak = calculateStudyStreak();
+  if (streak >= 2) {
+    streakEl.classList.remove("hidden");
+    streakDaysEl.textContent = streak;
+  } else {
+    streakEl.classList.add("hidden");
+  }
+
+  // Render calendar (last 14 days)
+  renderCalendar(calendarGrid);
+}
+
+function renderCalendar(container) {
+  container.innerHTML = "";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = 13; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+    const dayEl = document.createElement("div");
+    dayEl.className = "calendar-day";
+    dayEl.textContent = date.getDate();
+
+    if (i === 0) {
+      dayEl.classList.add("today");
+    }
+
+    if (gameData.studyDays.includes(dateStr)) {
+      dayEl.classList.add("completed");
+    }
+
+    container.appendChild(dayEl);
+  }
+}
+
+function onDailyGoalChange(value) {
+  gameData.dailyGoal = parseInt(value);
+  saveGame();
+  updateDailyGoalDisplay();
+}
+
+// ============ TEST COUNTDOWN ============
+function parseTestDate(dateStr) {
+  if (!dateStr) return null;
+
+  // Handle formats like "2/13", "2/13/2025", "Feb 13", etc.
+  const currentYear = new Date().getFullYear();
+
+  // Try MM/DD format first
+  const slashMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  if (slashMatch) {
+    const month = parseInt(slashMatch[1]) - 1;
+    const day = parseInt(slashMatch[2]);
+    const year = slashMatch[3] ?
+      (slashMatch[3].length === 2 ? 2000 + parseInt(slashMatch[3]) : parseInt(slashMatch[3]))
+      : currentYear;
+    return new Date(year, month, day);
+  }
+
+  // Try parsing as a regular date string
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) {
+    return parsed;
+  }
+
+  return null;
+}
+
+function updateTestCountdown() {
+  const countdownSection = el("countdownSection");
+  const countdownText = el("countdownText");
+  const countdownIcon = el("countdownIcon");
+  const countdownTip = el("countdownTip");
+
+  if (!CONTENT || !CONTENT.testDate) {
+    countdownSection.classList.add("hidden");
+    return;
+  }
+
+  const testDate = parseTestDate(CONTENT.testDate);
+  if (!testDate) {
+    countdownSection.classList.add("hidden");
+    return;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  testDate.setHours(0, 0, 0, 0);
+
+  const diffTime = testDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  countdownSection.classList.remove("hidden", "urgent", "soon", "plenty");
+
+  if (diffDays < 0) {
+    // Test has passed
+    countdownIcon.textContent = "✅";
+    countdownText.textContent = "Test day has passed - great job studying!";
+    countdownTip.classList.add("hidden");
+  } else if (diffDays === 0) {
+    // Test is today!
+    countdownSection.classList.add("urgent");
+    countdownIcon.textContent = "🌟";
+    countdownText.textContent = "Test is TODAY! You've got this!";
+    countdownTip.classList.add("hidden");
+  } else if (diffDays === 1) {
+    countdownSection.classList.add("urgent");
+    countdownIcon.textContent = "⏰";
+    countdownText.textContent = "Test is TOMORROW! Quick review time!";
+    showStudyRecommendation(countdownTip, 3);
+  } else if (diffDays <= 3) {
+    countdownSection.classList.add("soon");
+    countdownIcon.textContent = "📚";
+    countdownText.textContent = `${diffDays} days until test - almost there!`;
+    showStudyRecommendation(countdownTip, 5);
+  } else if (diffDays <= 7) {
+    countdownSection.classList.add("plenty");
+    countdownIcon.textContent = "📅";
+    countdownText.textContent = `${diffDays} days until test - great time to practice!`;
+    showStudyRecommendation(countdownTip, 3);
+  } else {
+    countdownSection.classList.add("plenty");
+    countdownIcon.textContent = "🎯";
+    countdownText.textContent = `${diffDays} days until test - you're ahead of the game!`;
+    countdownTip.classList.add("hidden");
+  }
+}
+
+function showStudyRecommendation(tipEl, maxQuestions) {
+  if (!CONTENT || !CONTENT.questions) {
+    tipEl.classList.add("hidden");
+    return;
+  }
+
+  // Find questions with lowest mastery (not yet mastered)
+  const lowMastery = CONTENT.questions
+    .map(q => ({ question: q, mastery: getMastery(q.id) }))
+    .filter(item => item.mastery < 5)
+    .sort((a, b) => a.mastery - b.mastery)
+    .slice(0, maxQuestions);
+
+  if (lowMastery.length === 0) {
+    tipEl.innerHTML = "🌟 <strong>Amazing!</strong> You've mastered all questions!";
+    tipEl.classList.remove("hidden");
+    return;
+  }
+
+  const count = lowMastery.length;
+  tipEl.innerHTML = `💡 <strong>Focus tip:</strong> Practice ${count} question${count > 1 ? 's' : ''} that need more work!`;
+  tipEl.classList.remove("hidden");
 }
 
 // ============ MASTERY & SPACED REPETITION ============
@@ -747,6 +1414,7 @@ async function loadContent() {
     if (studyArea) studyArea.classList.add("hidden");
 
     updateMasteryDisplay();
+    updateTestCountdown();
     startMode("practice");
   } catch (e) {
     loadingIndicator.classList.add("hidden");
@@ -764,7 +1432,8 @@ function updateActiveModeButton(activeMode) {
     study: "modeStudy",
     practice: "modePractice",
     streak: "modeStreak",
-    boss: "modeBoss"
+    boss: "modeBoss",
+    challenge: "modeChallenge"
   };
   const activeBtn = el(modeMap[activeMode]);
   if (activeBtn) activeBtn.classList.add("active");
@@ -791,6 +1460,18 @@ function startMode(newMode) {
   if (studyArea) studyArea.classList.add("hidden");
   questionBox.classList.remove("hidden");
 
+  // Handle challenge mode indicator
+  const challengeIndicator = el("challengeIndicator");
+  if (mode === "challenge") {
+    challengePlayer = 1;
+    challengeScore1 = 0;
+    challengeScore2 = 0;
+    challengeIndicator.classList.remove("hidden");
+    updateChallengeDisplay();
+  } else {
+    challengeIndicator.classList.add("hidden");
+  }
+
   if (mode === "study") {
     startStudyMode();
     return;
@@ -798,6 +1479,15 @@ function startMode(newMode) {
 
   // Use weighted questions for spaced repetition in practice mode
   if (mode === "practice") {
+    // Check for unseen questions first (Learn First Mode)
+    const unseen = getUnseenQuestions();
+    if (unseen.length > 0) {
+      // Start learn phase before quizzing
+      if (startLearnPhase()) {
+        return; // Will continue to quiz after learn phase
+      }
+    }
+
     queue = getWeightedQuestions();
     // Remove duplicates for practice (just shuffle unique questions weighted)
     const seen = new Set();
@@ -806,6 +1496,9 @@ function startMode(newMode) {
       seen.add(q.id);
       return true;
     });
+  } else if (mode === "challenge") {
+    // Challenge mode: use all questions shuffled, limit to 10 for a quick game
+    queue = shuffle(CONTENT.questions).slice(0, 10);
   } else {
     queue = shuffle(CONTENT.questions);
   }
@@ -912,6 +1605,8 @@ function nextQuestion() {
   if (mode === "boss") {
     // If both queues are empty, we've mastered everything!
     if (bossPool.length === 0 && queue.length === 0) {
+      lastBossComplete = true;
+      checkAchievements();
       showCompletion("Boss Battle complete! 🎉🏆");
       triggerConfetti(50);
       return;
@@ -940,9 +1635,18 @@ function nextQuestion() {
     }
 
     if (!current) {
-      showCompletion("Practice complete! 🎉");
-      triggerConfetti(30);
+      if (mode === "challenge") {
+        showChallengeCompletion();
+      } else {
+        showCompletion("Practice complete! 🎉");
+        triggerConfetti(30);
+      }
       return;
+    }
+
+    // Switch players in challenge mode
+    if (mode === "challenge") {
+      switchChallengePlayer();
     }
   }
 
@@ -968,6 +1672,9 @@ function renderQuestion(q) {
   const masteryIndicator = mastery >= 5 ? " ⭐" : "";
   promptEl.textContent = q.prompt + masteryIndicator;
   answerArea.innerHTML = "";
+
+  // Read question aloud
+  speakQuestion(q.prompt);
 
   if (q.type === "multiple_choice") {
     const choices = q.choices;
@@ -1113,6 +1820,19 @@ function onSubmit() {
     streak += 1;
     gameData.totalCorrect++;
 
+    // Challenge mode scoring
+    if (mode === "challenge") {
+      if (challengePlayer === 1) {
+        challengeScore1 += 10;
+      } else {
+        challengeScore2 += 10;
+      }
+      updateChallengeDisplay();
+    }
+
+    // Track daily progress
+    incrementDailyProgress();
+
     // Award XP with streak bonus
     const xpEarned = awardXP(10);
 
@@ -1131,20 +1851,30 @@ function onSubmit() {
       playCorrectSound();
     }
 
+    // Voice celebration
+    speakCelebration();
+
     // Celebration!
     triggerConfetti(streak >= 3 ? 20 : 10);
 
     const streakBonus = streak >= 3 ? ` (${streak} streak! 🔥)` : "";
-    showFeedback(`Correct! +${xpEarned} XP${streakBonus} 🎉`, true);
+    const playerLabel = mode === "challenge" ? (challengePlayer === 1 ? "You: " : "Friend: ") : "";
+    showFeedback(`${playerLabel}Correct! +${xpEarned} XP${streakBonus} 🎉`, true);
 
     // Check for streak milestone reward (riddle + sticker)
     checkStreakReward(streak);
+
+    // Check achievements
+    checkAchievements();
   } else {
     streak = 0;
     gameData.totalWrong++;
 
     // Play wrong sound
     playWrongSound();
+
+    // Voice encouragement
+    speakEncouragement();
 
     // Update mastery
     updateMastery(current.id, false);
@@ -1257,6 +1987,7 @@ function initUI() {
   el("modeStreak").onclick = () => startMode("streak");
   el("modeBoss").onclick = () => startMode("boss");
   el("modeStudy").onclick = () => startMode("study");
+  el("modeChallenge").onclick = () => startMode("challenge");
 
   submitBtn.onclick = onSubmit;
   nextBtn.onclick = nextQuestion;
@@ -1264,11 +1995,21 @@ function initUI() {
   closeEnoughBtn.onclick = onCloseEnough;
 
   el("reloadBtn").onclick = () => loadContent();
+  el("trophyBtn").onclick = openTrophyCase;
+  el("trophyClose").onclick = closeTrophyCase;
   el("resetBtn").onclick = resetProgress;
 
   themeSelect.onchange = (e) => applyTheme(e.target.value);
 
   quizSelect.onchange = (e) => switchQuiz(e.target.value);
+
+  el("dailyGoalSelect").onchange = (e) => onDailyGoalChange(e.target.value);
+
+  // Voice toggle
+  const voiceToggle = el("voiceToggle");
+  voiceToggle.checked = gameData.voiceEnabled;
+  voiceEnabled = gameData.voiceEnabled;
+  voiceToggle.onchange = (e) => toggleVoice(e.target.checked);
 
   levelUpClose.onclick = () => levelUpModal.classList.add("hidden");
 
@@ -1278,7 +2019,13 @@ function initUI() {
 
   // Study mode controls
   el("studyPrev").onclick = studyPrevCard;
-  el("studyNext").onclick = studyNextCard;
+  el("studyNext").onclick = () => {
+    if (isInLearnPhase) {
+      onLearnGotIt();
+    } else {
+      studyNextCard();
+    }
+  };
   el("studyDone").onclick = finishStudy;
 
   // Global keyboard handlers
@@ -1314,8 +2061,8 @@ async function init() {
   // Load manifest first
   await loadManifest();
 
-  // Load riddles and stickers for engagement features
-  await Promise.all([loadRiddles(), loadStickersManifest()]);
+  // Load riddles, stickers, and achievements for engagement features
+  await Promise.all([loadRiddles(), loadStickersManifest(), loadAchievements()]);
   updateStickerSidebar();
 
   // Restore saved quiz selection, or use first quiz from manifest
@@ -1331,6 +2078,7 @@ async function init() {
   updateQuizSelector();
   updateXPDisplay();
   updateThemeSelector();
+  updateDailyGoalDisplay();
   applyTheme(gameData.currentTheme);
   initUI();
   loadContent();

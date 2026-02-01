@@ -24,6 +24,11 @@
           <input type="checkbox" id="lenientToggle" />
           <span>Accept Close Answers</span>
         </label>
+        <label class="pill voice-pill">
+          <input type="checkbox" id="voiceToggle" />
+          <span>🔊 Read Aloud</span>
+        </label>
+        <button id="trophyBtn" class="btn ghost trophy-btn" title="My Trophies">🏆</button>
         <button id="reloadBtn" class="btn ghost" title="Reload questions" aria-label="Reload questions">↻</button>
       </div>
     </header>
@@ -32,6 +37,15 @@
     <section class="quizSelector">
       <label for="quizSelect">Study Guide:</label>
       <select id="quizSelect" class="quiz-select"></select>
+    </section>
+
+    <!-- Test Countdown -->
+    <section id="countdownSection" class="countdown-section hidden">
+      <div class="countdown-main">
+        <span id="countdownIcon" class="countdown-icon">📅</span>
+        <span id="countdownText" class="countdown-text">Loading...</span>
+      </div>
+      <div id="countdownTip" class="countdown-tip hidden"></div>
     </section>
 
     <!-- XP & Level Bar -->
@@ -46,12 +60,44 @@
       <div id="xpText" class="xp-text">0 XP</div>
     </section>
 
+    <!-- Daily Goal Section -->
+    <section class="daily-goal-section">
+      <div class="daily-goal-header">
+        <div class="daily-goal-title">
+          <span>🎯 Daily Goal</span>
+          <select id="dailyGoalSelect" class="daily-goal-select">
+            <option value="5">5 questions</option>
+            <option value="10" selected>10 questions</option>
+            <option value="15">15 questions</option>
+            <option value="20">20 questions</option>
+          </select>
+        </div>
+        <div id="dailyStreak" class="daily-streak hidden">🔥 <span id="streakDays">0</span> day streak!</div>
+      </div>
+      <div class="daily-progress-bar">
+        <div id="dailyProgressFill" class="daily-progress-fill"></div>
+      </div>
+      <div id="dailyProgressText" class="daily-progress-text">0/10 questions today</div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </section>
+
     <section class="modeBar">
       <button class="btn mode-btn" id="modeStudy">📚 Study<br><small>Look at answers first</small></button>
       <button class="btn mode-btn" id="modePractice">🎯 Practice<br><small>Learn at your own pace</small></button>
       <button class="btn mode-btn" id="modeStreak">🔥 Streak<br><small>2 wrong and you're out!</small></button>
       <button class="btn mode-btn" id="modeBoss">👑 Boss<br><small>Keep going until you get them all</small></button>
+      <button class="btn mode-btn challenge-btn" id="modeChallenge">👫 Challenge<br><small>Quiz with a friend!</small></button>
     </section>
+
+    <!-- Challenge Mode Player Indicator -->
+    <div id="challengeIndicator" class="challenge-indicator hidden">
+      <div class="challenge-turn" id="challengeTurn">Your Turn!</div>
+      <div class="challenge-scores">
+        <span id="player1Score" class="player-score player1">You: 0</span>
+        <span class="vs">VS</span>
+        <span id="player2Score" class="player-score player2">Friend: 0</span>
+      </div>
+    </div>
 
     <main class="card">
       <div class="statusRow">
@@ -120,6 +166,28 @@
         <p id="rewardStickerName" class="reward-sticker-name"></p>
       </div>
       <button id="riddleClose" class="btn primary hidden">Collect Sticker! 🎉</button>
+    </div>
+  </div>
+
+  <!-- Achievement Earned Toast -->
+  <div id="achievementToast" class="achievement-toast hidden">
+    <div class="achievement-toast-content">
+      <span id="achievementIcon" class="achievement-icon">🏆</span>
+      <div class="achievement-info">
+        <div class="achievement-label">Achievement Unlocked!</div>
+        <div id="achievementName" class="achievement-name">Badge Name</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trophy Case Modal -->
+  <div id="trophyModal" class="modal hidden">
+    <div class="modal-content trophy-modal">
+      <div class="modal-icon">🏆</div>
+      <h2>My Trophies</h2>
+      <div id="trophyGrid" class="trophy-grid"></div>
+      <div id="trophyProgress" class="trophy-progress">0/0 badges earned</div>
+      <button id="trophyClose" class="btn primary">Close</button>
     </div>
   </div>
 
