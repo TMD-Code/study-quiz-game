@@ -53,32 +53,12 @@
       <div class="xp-header">
         <span id="levelText">Level 1: Beginner</span>
         <span id="masteryText">Mastered: 0/0 ⭐</span>
+        <span class="mastery-hint">(same question answered 5 times correctly = mastered)</span>
       </div>
       <div class="xp-bar">
         <div id="xpBarFill" class="xp-bar-fill"></div>
       </div>
       <div id="xpText" class="xp-text">0 XP</div>
-    </section>
-
-    <!-- Daily Goal Section -->
-    <section class="daily-goal-section">
-      <div class="daily-goal-header">
-        <div class="daily-goal-title">
-          <span>🎯 Daily Goal</span>
-          <select id="dailyGoalSelect" class="daily-goal-select">
-            <option value="5">5 questions</option>
-            <option value="10" selected>10 questions</option>
-            <option value="15">15 questions</option>
-            <option value="20">20 questions</option>
-          </select>
-        </div>
-        <div id="dailyStreak" class="daily-streak hidden">🔥 <span id="streakDays">0</span> day streak!</div>
-      </div>
-      <div class="daily-progress-bar">
-        <div id="dailyProgressFill" class="daily-progress-fill"></div>
-      </div>
-      <div id="dailyProgressText" class="daily-progress-text">0/10 questions today</div>
-      <div class="calendar-grid" id="calendarGrid"></div>
     </section>
 
     <section class="modeBar">
@@ -127,7 +107,7 @@
 
         <div class="actions">
           <button id="submitBtn" class="btn primary">✔️ Submit Answer</button>
-          <button id="skipBtn" class="btn ghost">Skip ⏭️</button>
+          <button id="skipBtn" class="btn ghost">Skip Question</button>
           <button id="nextBtn" class="btn primary hidden">Next Question ➡️</button>
           <button id="closeEnoughBtn" class="btn close-enough hidden">👍 Close Enough</button>
         </div>

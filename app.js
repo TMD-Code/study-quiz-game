@@ -13,7 +13,8 @@ let streak = 0;
 let misses = 0;
 let qIndex = 0;
 let totalQs = 0;
-let bossCorrect = 0; // Track mastered questions in Boss mode
+let bossCorrect = 0; // Track correct answers in Boss mode
+let bossAttempts = 0; // Track total attempts in Boss mode
 
 // Challenge mode state
 let challengePlayer = 1; // 1 or 2
@@ -45,11 +46,7 @@ let gameData = {
   currentQuiz: null, // Set after loading manifest
   mastery: {}, // quizFile -> { questionId -> mastery score (0-5) }
   seenQuestions: {}, // quizFile -> [questionIds that have been introduced]
-  // Daily goals
-  dailyGoal: 10, // Questions to answer per day
-  dailyProgress: 0, // Questions answered today
-  dailyDate: null, // Date string for today's progress
-  studyDays: [], // Array of date strings when goal was met
+  stickers: {}, // quizFile -> [sticker objects earned for that quiz]
   voiceEnabled: false, // Read questions aloud
   earnedBadges: [] // Permanent achievement badges
 };
@@ -168,6 +165,8 @@ function playStreakSound() {
 // ============ VOICE READ-ALOUD SYSTEM ============
 let voiceEnabled = false;
 let speechSynthesis = window.speechSynthesis;
+let voicesLoaded = false;
+let availableVoices = [];
 
 const VOICE_CELEBRATIONS = [
   "Awesome!",
@@ -190,30 +189,52 @@ const VOICE_ENCOURAGEMENTS = [
   "You're doing great!"
 ];
 
+// Load voices - they load asynchronously in most browsers
+function loadVoices() {
+  if (!speechSynthesis) return;
+
+  availableVoices = speechSynthesis.getVoices();
+  if (availableVoices.length > 0) {
+    voicesLoaded = true;
+  }
+}
+
+// Try to load voices immediately and also on the voiceschanged event
+if (speechSynthesis) {
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+
 function speak(text, rate = 0.9, pitch = 1.1) {
   if (!voiceEnabled || !speechSynthesis) return;
 
-  // Cancel any ongoing speech
+  // Cancel any ongoing speech (fixes Chrome bug)
   speechSynthesis.cancel();
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = rate;
-  utterance.pitch = pitch;
-  utterance.volume = 0.8;
+  // Small delay to ensure cancel completes (Chrome workaround)
+  setTimeout(() => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = rate;
+    utterance.pitch = pitch;
+    utterance.volume = 0.8;
 
-  // Try to get a friendly voice
-  const voices = speechSynthesis.getVoices();
-  const preferredVoice = voices.find(v =>
-    v.name.includes("Female") ||
-    v.name.includes("Samantha") ||
-    v.name.includes("Google") ||
-    v.lang.startsWith("en")
-  );
-  if (preferredVoice) {
-    utterance.voice = preferredVoice;
-  }
+    // Try to get a friendly English voice
+    const voices = speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v =>
+      v.lang.startsWith("en") && (
+        v.name.includes("Female") ||
+        v.name.includes("Samantha") ||
+        v.name.includes("Google") ||
+        v.name.includes("Microsoft")
+      )
+    ) || voices.find(v => v.lang.startsWith("en"));
 
-  speechSynthesis.speak(utterance);
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    speechSynthesis.speak(utterance);
+  }, 50);
 }
 
 function speakQuestion(text) {
@@ -234,8 +255,30 @@ function toggleVoice(enabled) {
   voiceEnabled = enabled;
   gameData.voiceEnabled = enabled;
   saveGame();
+
   if (enabled) {
-    speak("Voice is on!", 1.0, 1.1);
+    // Check if speech synthesis is available
+    if (!window.speechSynthesis) {
+      alert("Sorry, your browser doesn't support text-to-speech. Try Chrome or Edge.");
+      voiceEnabled = false;
+      gameData.voiceEnabled = false;
+      saveGame();
+      el("voiceToggle").checked = false;
+      return;
+    }
+
+    // Speak confirmation
+    speechSynthesis.cancel();
+    setTimeout(() => {
+      const utterance = new SpeechSynthesisUtterance("Voice is on!");
+      utterance.rate = 1.0;
+      utterance.pitch = 1.1;
+      utterance.volume = 1.0;
+      const voices = speechSynthesis.getVoices();
+      const englishVoice = voices.find(v => v.lang.startsWith("en"));
+      if (englishVoice) utterance.voice = englishVoice;
+      speechSynthesis.speak(utterance);
+    }, 100);
   }
 }
 
@@ -290,7 +333,7 @@ function loadGame() {
 }
 
 function resetProgress() {
-  if (confirm("Are you sure you want to reset ALL progress?\n\nThis will clear:\n• XP and level\n• Unlocked themes\n• Question mastery scores\n\nThis cannot be undone!")) {
+  if (confirm("Are you sure you want to reset ALL progress?\n\nThis will clear:\n• XP and level\n• Unlocked themes\n• Question mastery scores\n• Earned stickers\n\nThis cannot be undone!")) {
     localStorage.removeItem(STORAGE_KEY);
     location.reload();
   }
@@ -505,7 +548,6 @@ function getAchievementContext() {
     masteredCount: masteredCount,
     masteredAll: masteredAll,
     bossComplete: lastBossComplete,
-    studyStreak: calculateStudyStreak(),
     level: gameData.level,
     xp: gameData.xp
   };
@@ -601,279 +643,6 @@ function openTrophyCase() {
 
 function closeTrophyCase() {
   el("trophyModal").classList.add("hidden");
-}
-
-// ============ LEARN FIRST MODE ============
-let learnQueue = [];
-let isInLearnPhase = false;
-let currentLearnIndex = 0;
-
-function getSeenQuestions() {
-  if (!gameData.seenQuestions[currentQuizFile]) {
-    gameData.seenQuestions[currentQuizFile] = [];
-  }
-  return gameData.seenQuestions[currentQuizFile];
-}
-
-function isQuestionSeen(questionId) {
-  return getSeenQuestions().includes(questionId);
-}
-
-function markQuestionSeen(questionId) {
-  const seen = getSeenQuestions();
-  if (!seen.includes(questionId)) {
-    seen.push(questionId);
-    saveGame();
-  }
-}
-
-function getUnseenQuestions() {
-  if (!CONTENT || !CONTENT.questions) return [];
-  return CONTENT.questions.filter(q => !isQuestionSeen(q.id));
-}
-
-function startLearnPhase() {
-  learnQueue = getUnseenQuestions();
-  if (learnQueue.length === 0) {
-    // All questions seen, skip to quiz
-    isInLearnPhase = false;
-    return false;
-  }
-
-  isInLearnPhase = true;
-  currentLearnIndex = 0;
-
-  questionBox.classList.add("hidden");
-  studyArea.classList.remove("hidden");
-
-  renderLearnCard();
-  return true;
-}
-
-function renderLearnCard() {
-  const studyCard = el("studyCard");
-  const studyProgress = el("studyProgress");
-  const studyPrev = el("studyPrev");
-  const studyNext = el("studyNext");
-  const studyDone = el("studyDone");
-
-  if (!learnQueue.length) return;
-
-  const q = learnQueue[currentLearnIndex];
-
-  const typeLabels = {
-    multiple_choice: "📋 Multiple Choice",
-    true_false: "✓✗ True or False",
-    short_answer: "✏️ Fill in the Blank",
-    order: "🔢 Put in Order"
-  };
-  const typeLabel = typeLabels[q.type] || q.type;
-
-  let answerText = "";
-  if (q.type === "true_false") {
-    answerText = q.answer ? "✓ True" : "✗ False";
-  } else if (q.type === "order") {
-    answerText = q.answerOrder.join(" → ");
-  } else {
-    answerText = q.answer;
-  }
-
-  studyCard.innerHTML = `
-    <div class="study-type learn-badge">🆕 New Question - Learn It!</div>
-    <div class="study-type">${typeLabel}</div>
-    <div class="study-question">${q.prompt}</div>
-    <div class="study-divider">👆 Tap to see the answer!</div>
-    <div class="study-answer hidden">${answerText}</div>
-  `;
-
-  // Attach click handler for flipping
-  studyCard.onclick = () => {
-    const answer = studyCard.querySelector(".study-answer");
-    const divider = studyCard.querySelector(".study-divider");
-    if (answer) answer.classList.toggle("hidden");
-    if (divider) divider.classList.toggle("hidden");
-  };
-
-  studyProgress.textContent = `Learning: ${currentLearnIndex + 1} of ${learnQueue.length} new questions`;
-  studyPrev.classList.add("hidden"); // No previous in learn mode
-  studyNext.textContent = "Got It! ✅";
-  studyNext.classList.remove("hidden");
-  studyDone.classList.add("hidden");
-
-  // Read question aloud
-  speakQuestion(q.prompt);
-}
-
-function onLearnGotIt() {
-  // Mark current question as seen
-  const q = learnQueue[currentLearnIndex];
-  markQuestionSeen(q.id);
-
-  // Award small XP for learning
-  awardXP(3);
-
-  currentLearnIndex++;
-
-  if (currentLearnIndex >= learnQueue.length) {
-    // Finished learning all new questions
-    finishLearnPhase();
-  } else {
-    renderLearnCard();
-  }
-}
-
-function finishLearnPhase() {
-  isInLearnPhase = false;
-  learnQueue = [];
-  currentLearnIndex = 0;
-
-  studyArea.classList.add("hidden");
-  questionBox.classList.remove("hidden");
-
-  // Show celebratory message
-  showFeedback("Great! You've learned all new questions! Now let's practice! 🎉", true);
-
-  // Start the actual quiz
-  queue = getWeightedQuestions();
-  const seen = new Set();
-  queue = queue.filter(q => {
-    if (seen.has(q.id)) return false;
-    seen.add(q.id);
-    return true;
-  });
-  totalQs = queue.length;
-  qIndex = 0;
-
-  nextQuestion();
-}
-
-// ============ DAILY GOALS ============
-function getTodayString() {
-  const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-}
-
-function checkDailyReset() {
-  const today = getTodayString();
-  if (gameData.dailyDate !== today) {
-    // New day - reset daily progress
-    gameData.dailyDate = today;
-    gameData.dailyProgress = 0;
-    saveGame();
-  }
-}
-
-function incrementDailyProgress() {
-  checkDailyReset();
-  gameData.dailyProgress++;
-
-  // Check if goal met
-  if (gameData.dailyProgress === gameData.dailyGoal) {
-    const today = getTodayString();
-    if (!gameData.studyDays.includes(today)) {
-      gameData.studyDays.push(today);
-      // Play celebration!
-      playStreakSound();
-      triggerConfetti(20);
-    }
-  }
-
-  saveGame();
-  updateDailyGoalDisplay();
-}
-
-function calculateStudyStreak() {
-  const sortedDays = [...gameData.studyDays].sort().reverse();
-  if (sortedDays.length === 0) return 0;
-
-  let streak = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  for (let i = 0; i < sortedDays.length; i++) {
-    const checkDate = new Date(today);
-    checkDate.setDate(checkDate.getDate() - i);
-    const checkStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
-
-    if (sortedDays.includes(checkStr)) {
-      streak++;
-    } else {
-      break;
-    }
-  }
-
-  return streak;
-}
-
-function updateDailyGoalDisplay() {
-  checkDailyReset();
-
-  const progressFill = el("dailyProgressFill");
-  const progressText = el("dailyProgressText");
-  const streakEl = el("dailyStreak");
-  const streakDaysEl = el("streakDays");
-  const goalSelect = el("dailyGoalSelect");
-  const calendarGrid = el("calendarGrid");
-
-  // Update goal selector
-  goalSelect.value = gameData.dailyGoal;
-
-  // Update progress bar
-  const percent = Math.min((gameData.dailyProgress / gameData.dailyGoal) * 100, 100);
-  progressFill.style.width = percent + "%";
-  progressFill.classList.toggle("complete", gameData.dailyProgress >= gameData.dailyGoal);
-
-  // Update progress text
-  if (gameData.dailyProgress >= gameData.dailyGoal) {
-    progressText.textContent = `${gameData.dailyProgress}/${gameData.dailyGoal} - Goal complete! Great job! 🎉`;
-  } else {
-    const remaining = gameData.dailyGoal - gameData.dailyProgress;
-    progressText.textContent = `${gameData.dailyProgress}/${gameData.dailyGoal} questions today (${remaining} to go!)`;
-  }
-
-  // Update streak
-  const streak = calculateStudyStreak();
-  if (streak >= 2) {
-    streakEl.classList.remove("hidden");
-    streakDaysEl.textContent = streak;
-  } else {
-    streakEl.classList.add("hidden");
-  }
-
-  // Render calendar (last 14 days)
-  renderCalendar(calendarGrid);
-}
-
-function renderCalendar(container) {
-  container.innerHTML = "";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  for (let i = 13; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-
-    const dayEl = document.createElement("div");
-    dayEl.className = "calendar-day";
-    dayEl.textContent = date.getDate();
-
-    if (i === 0) {
-      dayEl.classList.add("today");
-    }
-
-    if (gameData.studyDays.includes(dateStr)) {
-      dayEl.classList.add("completed");
-    }
-
-    container.appendChild(dayEl);
-  }
-}
-
-function onDailyGoalChange(value) {
-  gameData.dailyGoal = parseInt(value);
-  saveGame();
-  updateDailyGoalDisplay();
 }
 
 // ============ TEST COUNTDOWN ============
@@ -1198,8 +967,34 @@ function onRiddleClose() {
   }
 }
 
+function getQuizStickers() {
+  if (!currentQuizFile) return [];
+  if (!gameData.stickers[currentQuizFile]) {
+    gameData.stickers[currentQuizFile] = [];
+  }
+  return gameData.stickers[currentQuizFile];
+}
+
+function loadStickersForQuiz() {
+  // Load saved stickers for current quiz
+  sessionStickers = [...getQuizStickers()];
+  usedRiddleIndices = [];
+  lastStreakMilestone = 0;
+  updateStickerSidebar();
+}
+
 function awardSticker(sticker) {
   sessionStickers.push(sticker);
+
+  // Save to localStorage for this quiz
+  if (currentQuizFile) {
+    if (!gameData.stickers[currentQuizFile]) {
+      gameData.stickers[currentQuizFile] = [];
+    }
+    gameData.stickers[currentQuizFile].push(sticker);
+    saveGame();
+  }
+
   updateStickerSidebar();
 
   // Play sticker earned sound
@@ -1246,10 +1041,17 @@ function updateStickerSidebar() {
   });
 }
 
-function resetSessionStickers() {
+function resetStickersForQuiz() {
   sessionStickers = [];
   usedRiddleIndices = [];
   lastStreakMilestone = 0;
+
+  // Clear saved stickers for current quiz
+  if (currentQuizFile && gameData.stickers[currentQuizFile]) {
+    gameData.stickers[currentQuizFile] = [];
+    saveGame();
+  }
+
   updateStickerSidebar();
 }
 
@@ -1270,9 +1072,9 @@ function setStatus() {
   const streakEmoji = streak >= 3 ? " 🔥" : "";
   statusMid.textContent = `Streak: ${streak}${streakEmoji}${mode === "streak" ? ` | Misses: ${misses}/2` : ""}`;
 
-  // In Boss mode, show how many questions mastered vs total, not attempt count
+  // In Boss mode, show correct answers vs total questions
   if (mode === "boss") {
-    statusRight.textContent = `Mastered: ${bossCorrect}/${totalQs}`;
+    statusRight.textContent = `Correct: ${bossCorrect}/${totalQs}`;
   } else {
     statusRight.textContent = `Q: ${Math.min(qIndex, totalQs)}/${totalQs}`;
   }
@@ -1359,17 +1161,18 @@ async function loadManifest() {
   try {
     const res = await fetch("content/quizzes.json", { cache: "no-store" });
     if (!res.ok) {
-      // Fallback to just current.json if manifest doesn't exist
-      quizManifest = [{ file: "current.json", name: "Current Quiz", subject: "" }];
+      // Fallback if manifest doesn't exist - scan Study guides folder
+      console.warn("Could not load quiz manifest");
+      quizManifest = [];
       return;
     }
     quizManifest = await res.json();
-    if (!Array.isArray(quizManifest) || quizManifest.length === 0) {
-      quizManifest = [{ file: "current.json", name: "Current Quiz", subject: "" }];
+    if (!Array.isArray(quizManifest)) {
+      quizManifest = [];
     }
   } catch (e) {
-    console.warn("Could not load quiz manifest, using default", e);
-    quizManifest = [{ file: "current.json", name: "Current Quiz", subject: "" }];
+    console.warn("Could not load quiz manifest", e);
+    quizManifest = [];
   }
 }
 
@@ -1415,6 +1218,7 @@ async function loadContent() {
 
     updateMasteryDisplay();
     updateTestCountdown();
+    loadStickersForQuiz();
     startMode("practice");
   } catch (e) {
     loadingIndicator.classList.add("hidden");
@@ -1447,6 +1251,7 @@ function startMode(newMode) {
   qIndex = 0;
   bossPool = [];
   bossCorrect = 0;
+  bossAttempts = 0;
   skipped = [];
   inSkippedPhase = false;
   studyIndex = 0;
@@ -1479,15 +1284,6 @@ function startMode(newMode) {
 
   // Use weighted questions for spaced repetition in practice mode
   if (mode === "practice") {
-    // Check for unseen questions first (Learn First Mode)
-    const unseen = getUnseenQuestions();
-    if (unseen.length > 0) {
-      // Start learn phase before quizzing
-      if (startLearnPhase()) {
-        return; // Will continue to quiz after learn phase
-      }
-    }
-
     queue = getWeightedQuestions();
     // Remove duplicates for practice (just shuffle unique questions weighted)
     const seen = new Set();
@@ -1507,7 +1303,12 @@ function startMode(newMode) {
 
   nextBtn.classList.add("hidden");
   submitBtn.classList.remove("hidden");
-  skipBtn.classList.remove("hidden");
+  // Hide skip button in streak mode (not allowed)
+  if (mode === "streak") {
+    skipBtn.classList.add("hidden");
+  } else {
+    skipBtn.classList.remove("hidden");
+  }
   feedbackEl.classList.add("hidden");
 
   nextQuestion();
@@ -1562,11 +1363,21 @@ function renderStudyCard() {
     answerText = q.answer;
   }
 
+  // Build choices HTML for multiple choice questions
+  let choicesHTML = "";
+  if (q.type === "multiple_choice" && Array.isArray(q.choices)) {
+    const shuffledChoices = shuffle([...q.choices]);
+    choicesHTML = '<div class="study-choices">' +
+      shuffledChoices.map(c => `<div class="study-choice-item">• ${c}</div>`).join("") +
+      '</div>';
+  }
+
   studyCard.innerHTML = `
     <div class="study-type">${typeLabel}</div>
     <div class="study-question">${q.prompt}</div>
+    ${choicesHTML}
     <div class="study-divider">👆 Tap anywhere to see the answer!</div>
-    <div class="study-answer hidden">${answerText}</div>
+    <div class="study-answer hidden">✓ ${answerText}</div>
     <div class="study-mastery">${masteryStars}</div>
   `;
 
@@ -1637,6 +1448,9 @@ function nextQuestion() {
     if (!current) {
       if (mode === "challenge") {
         showChallengeCompletion();
+      } else if (mode === "streak") {
+        showCompletion(`Streak complete! You got through all ${totalQs} questions! 🔥🎉`);
+        triggerConfetti(50);
       } else {
         showCompletion("Practice complete! 🎉");
         triggerConfetti(30);
@@ -1657,12 +1471,26 @@ function nextQuestion() {
 
 function showCompletion(msg) {
   promptEl.textContent = msg;
+
+  let statsHTML = `<div>Total XP: ${gameData.xp}</div>
+    <div>Session Score: ${score}</div>`;
+
+  if (mode === "boss") {
+    // Boss mode: show correct answers out of total attempts
+    statsHTML += `<div>Questions Correct: ${bossCorrect}/${bossAttempts}</div>`;
+  } else {
+    // Other modes: show mastery progress
+    const masteredCount = CONTENT.questions.filter(q => getMastery(q.id) >= 5).length;
+    const totalCount = CONTENT.questions.length;
+    statsHTML += `<div>Questions Mastered: ${masteredCount}/${totalCount} ⭐</div>`;
+  }
+
   answerArea.innerHTML = `<div class="completion-stats">
-    <div>Total XP: ${gameData.xp}</div>
-    <div>Session Score: ${score}</div>
-    <div>Questions Mastered: ${CONTENT.questions.filter(q => getMastery(q.id) >= 5).length}/${CONTENT.questions.length}</div>
+    ${statsHTML}
+    <button class="btn primary" onclick="startMode('${mode}')" style="margin-top: 16px;">Play Again</button>
   </div>`;
   submitBtn.classList.add("hidden");
+  skipBtn.classList.add("hidden");
   nextBtn.classList.add("hidden");
   feedbackEl.classList.add("hidden");
 }
@@ -1677,7 +1505,7 @@ function renderQuestion(q) {
   speakQuestion(q.prompt);
 
   if (q.type === "multiple_choice") {
-    const choices = q.choices;
+    const choices = shuffle([...q.choices]);
     let selected = null;
 
     choices.forEach((c) => {
@@ -1830,18 +1658,16 @@ function onSubmit() {
       updateChallengeDisplay();
     }
 
-    // Track daily progress
-    incrementDailyProgress();
-
     // Award XP with streak bonus
     const xpEarned = awardXP(10);
 
     // Update mastery
     updateMastery(current.id, true);
 
-    // Boss mode: track mastered questions (already removed from pool when shifted)
+    // Boss mode: track correct answers
     if (mode === "boss") {
       bossCorrect++;
+      bossAttempts++;
     }
 
     // Sound effects!
@@ -1884,15 +1710,14 @@ function onSubmit() {
       const encouragement = ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
       showFeedback(buildWrongFeedback(current) + " " + encouragement, false);
       if (misses >= 2) {
-        submitBtn.classList.add("hidden");
-        nextBtn.classList.add("hidden");
         setStatus();
-        showFeedback(`Streak over! Final score: ${score}. ${encouragement}`, false);
+        showCompletion(`Streak over! 2 misses - Final score: ${score}`);
         return;
       }
     } else if (mode === "boss") {
       // Add missed question back to bossPool (will see it again later, not immediately)
       bossPool.push(current);
+      bossAttempts++;
       const encouragement = ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
       showFeedback(buildWrongFeedback(current) + " " + encouragement, false);
     } else {
@@ -2003,8 +1828,6 @@ function initUI() {
 
   quizSelect.onchange = (e) => switchQuiz(e.target.value);
 
-  el("dailyGoalSelect").onchange = (e) => onDailyGoalChange(e.target.value);
-
   // Voice toggle
   const voiceToggle = el("voiceToggle");
   voiceToggle.checked = gameData.voiceEnabled;
@@ -2019,13 +1842,7 @@ function initUI() {
 
   // Study mode controls
   el("studyPrev").onclick = studyPrevCard;
-  el("studyNext").onclick = () => {
-    if (isInLearnPhase) {
-      onLearnGotIt();
-    } else {
-      studyNextCard();
-    }
-  };
+  el("studyNext").onclick = studyNextCard;
   el("studyDone").onclick = finishStudy;
 
   // Global keyboard handlers
@@ -2066,19 +1883,24 @@ async function init() {
   updateStickerSidebar();
 
   // Restore saved quiz selection, or use first quiz from manifest
-  currentQuizFile = gameData.currentQuiz || quizManifest[0]?.file || "current.json";
+  currentQuizFile = gameData.currentQuiz || quizManifest[0]?.file;
 
   // Verify the saved quiz still exists in manifest, otherwise use first
-  if (!quizManifest.find(q => q.file === currentQuizFile)) {
-    currentQuizFile = quizManifest[0]?.file || "current.json";
+  if (!currentQuizFile || !quizManifest.find(q => q.file === currentQuizFile)) {
+    currentQuizFile = quizManifest[0]?.file;
     gameData.currentQuiz = currentQuizFile;
     saveGame();
+  }
+
+  // Show error if no quizzes available
+  if (!currentQuizFile) {
+    showError("No quiz files found! Please add quiz JSON files to the 'content/Study guides/' folder and update 'content/quizzes.json'.");
+    return;
   }
 
   updateQuizSelector();
   updateXPDisplay();
   updateThemeSelector();
-  updateDailyGoalDisplay();
   applyTheme(gameData.currentTheme);
   initUI();
   loadContent();
