@@ -1,0 +1,134 @@
+{
+"title": "Space Test Review",
+"testDate": "2/6/26",
+"questions": [
+{
+"id": "patterns-called-constellations",
+"type": "multiple_choice",
+"prompt": "You can see patterns in the sky with the stars. These are called what?",
+"choices": ["constellations", "planets", "galaxies", "phases"],
+"answer": "constellations"
+},
+{
+"id": "moon-orbit-days",
+"type": "short_answer",
+"prompt": "About how many days does it take for the moon to go around Earth?",
+"answer": "29 days"
+},
+{
+"id": "moon-makes-own-light",
+"type": "true_false",
+"prompt": "The moon makes its own light.",
+"answer": false
+},
+{
+"id": "moon-changes-shape",
+"type": "true_false",
+"prompt": "The moon changes shape.",
+"answer": false
+},
+{
+"id": "earth-rotation-causes",
+"type": "multiple_choice",
+"prompt": "Earth's rotation causes the pattern of what?",
+"choices": ["day and night", "the seasons", "moon phases", "constellations"],
+"answer": "day and night"
+},
+{
+"id": "daytime-nighttime-sides",
+"type": "true_false",
+"prompt": "When it is daytime on one side of the Earth, it is nighttime on the other.",
+"answer": true
+},
+{
+"id": "stars-light-source",
+"type": "multiple_choice",
+"prompt": "Stars look like tiny dots of light from Earth because stars make what?",
+"choices": ["their own light", "reflected light", "moonlight", "sunlight"],
+"answer": "their own light"
+},
+{
+"id": "four-seasons-list",
+"type": "short_answer",
+"prompt": "Name the four seasons.",
+"answer": "fall, winter, spring, summer"
+},
+{
+"id": "season-depends-on-location",
+"type": "true_false",
+"prompt": "The season is different depending on where you are on Earth.",
+"answer": true
+},
+{
+"id": "daylight-changes",
+"type": "multiple_choice",
+"prompt": "What changes with each season?",
+"choices": ["amount of daylight", "Earth's size", "moon shape", "star brightness"],
+"answer": "amount of daylight"
+},
+{
+"id": "moon-phases-definition",
+"type": "multiple_choice",
+"prompt": "Moon phases are the different what of the moon we see?",
+"choices": ["shapes", "sizes", "colors", "distances"],
+"answer": "shapes"
+},
+{
+"id": "earth-orbit-time",
+"type": "short_answer",
+"prompt": "How long does it take Earth to move around the sun?",
+"answer": "1 year"
+},
+{
+"id": "see-stars-day",
+"type": "true_false",
+"prompt": "We can see stars during the day.",
+"answer": false
+},
+{
+"id": "stars-day-reason",
+"type": "short_answer",
+"prompt": "Why can we not see stars during the day?",
+"answer": "the sun is too bright"
+},
+{
+"id": "moon-orbit-mc",
+"type": "multiple_choice",
+"prompt": "What does the moon go around?",
+"choices": ["Earth", "the sun", "Mars", "the stars"],
+"answer": "Earth"
+},
+{
+"id": "earth-rotation-tf",
+"type": "true_false",
+"prompt": "Earth's rotation causes day and night.",
+"answer": true
+},
+{
+"id": "stars-look-like",
+"type": "short_answer",
+"prompt": "Stars look like tiny what from Earth?",
+"answer": "dots of light"
+},
+{
+"id": "moon-light-source-mc",
+"type": "multiple_choice",
+"prompt": "The moon does NOT make which of the following?",
+"choices": ["its own light", "phases", "shapes we see", "patterns over time"],
+"answer": "its own light"
+},
+{
+"id": "day-night-sides-mc",
+"type": "multiple_choice",
+"prompt": "When one side of Earth has daytime, the other side has what?",
+"choices": ["nighttime", "more daylight", "summer", "winter"],
+"answer": "nighttime"
+},
+{
+"id": "earth-around-sun-tf",
+"type": "true_false",
+"prompt": "Earth takes 1 year to move around the sun.",
+"answer": true
+}
+]
+}

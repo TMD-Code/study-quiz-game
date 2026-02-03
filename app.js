@@ -218,16 +218,22 @@ function speak(text, rate = 0.9, pitch = 1.1) {
     utterance.pitch = pitch;
     utterance.volume = 0.8;
 
-    // Try to get a friendly English voice
+    // Try to get the best available English voice (priority order)
     const voices = speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v =>
-      v.lang.startsWith("en") && (
-        v.name.includes("Female") ||
+    const preferredVoice =
+      // First: Google US English (most natural)
+      voices.find(v => v.name === "Google US English") ||
+      // Second: Any Google English voice
+      voices.find(v => v.name.includes("Google") && v.lang.startsWith("en")) ||
+      // Third: Natural voices (if available)
+      voices.find(v => v.name.includes("Natural") && v.lang.startsWith("en")) ||
+      // Fourth: Other quality voices
+      voices.find(v => v.lang.startsWith("en") && (
         v.name.includes("Samantha") ||
-        v.name.includes("Google") ||
-        v.name.includes("Microsoft")
-      )
-    ) || voices.find(v => v.lang.startsWith("en"));
+        v.name.includes("Female")
+      )) ||
+      // Fallback: Any English voice
+      voices.find(v => v.lang.startsWith("en"));
 
     if (preferredVoice) {
       utterance.voice = preferredVoice;
@@ -267,7 +273,7 @@ function toggleVoice(enabled) {
       return;
     }
 
-    // Speak confirmation
+    // Speak confirmation using the best available voice
     speechSynthesis.cancel();
     setTimeout(() => {
       const utterance = new SpeechSynthesisUtterance("Voice is on!");
@@ -275,8 +281,11 @@ function toggleVoice(enabled) {
       utterance.pitch = 1.1;
       utterance.volume = 1.0;
       const voices = speechSynthesis.getVoices();
-      const englishVoice = voices.find(v => v.lang.startsWith("en"));
-      if (englishVoice) utterance.voice = englishVoice;
+      const bestVoice =
+        voices.find(v => v.name === "Google US English") ||
+        voices.find(v => v.name.includes("Google") && v.lang.startsWith("en")) ||
+        voices.find(v => v.lang.startsWith("en"));
+      if (bestVoice) utterance.voice = bestVoice;
       speechSynthesis.speak(utterance);
     }, 100);
   }
